@@ -14,3 +14,9 @@ use crate::modules::grid::draw_grid;
 */
 // Add modules below
 pub mod database;
+pub mod label;
+pub mod listview;
+pub mod scale;
+pub mod text_button;
+pub mod text_input;
+pub mod still_image;
