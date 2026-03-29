@@ -101,9 +101,8 @@ fn is_zero(num: &i32) -> bool {
     *num == 0
 }
 
-pub const TURSO_URL: &str = "libsql://movies-ark1800.aws-us-west-2.turso.io";
-pub const TURSO_AUTH_TOKEN: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQ0NTEwNjMsImlkIjoiMDE5ZDI1ODUtYjIwMS03MWMwLTg2Y2UtZGUwNzA5ZjYyMGU5IiwicmlkIjoiMzE2ZWU4MjYtYjc1ZS00YzM4LTkxMWMtOGY4ZmQ3NjQ3NGMwIn0.OR072xIyyuJE5Bb7-kJoYkg0wLLd9B0H5mAr2F-tGbeyFCstF040rbAvKBRrmlsTxKBq0M0nP8l4F-IJ5A6bAA";
-
+pub const TURSO_URL: &str = "libsql://movie-database-ark1800.aws-us-west-2.turso.io";
+pub const TURSO_AUTH_TOKEN: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQ4MDg5MjAsImlkIjoiMDE5ZDNhZGEtOTUwMS03OGQxLTliNTItNTBlOGFmYjgyZjg2IiwicmlkIjoiOGMyMjFlMzUtMzg1ZS00ZTdhLWIxZDctMjhjMWI2NWU3MmZmIn0.qttbkZwgM31798jGqCc6ehkrS3TcBIKOIELnhxsRZXtMW73INfkeY8HE8qD8PhS9i3UFGjdNgzQ2rcAZrHc9AQ";
 // ============================================================================
 // CUSTOMIZE THIS STRUCT FOR YOUR DATABASE SCHEMA
 // ============================================================================
@@ -126,7 +125,10 @@ pub const TURSO_AUTH_TOKEN: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjo
 pub struct DatabaseTable {
     #[serde(default, skip_serializing_if = "is_zero")]
     pub id: i32,
-    pub text: String,
+    pub title: String,
+    pub actors: String,
+    pub released: String,
+    pub summary: String,
     // Example: Add more fields like this:
     // pub email: String,
     // pub age: i32,
@@ -177,7 +179,10 @@ pub async fn create_table_from_struct(table_name: &str) -> Result<(), Box<dyn st
     let sql = format!(
         "CREATE TABLE IF NOT EXISTS {} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            text TEXT NOT NULL
+            title TEXT NOT NULL,
+            actors TEXT NOT NULL,
+            released TEXT NOT NULL,
+            summary TEXT NOT NULL
         )",
         table_name
     );
@@ -185,6 +190,10 @@ pub async fn create_table_from_struct(table_name: &str) -> Result<(), Box<dyn st
     Ok(())
 }
 
+pub async fn test(name: &str) -> &str {
+    println!("Hello, {}!", name);
+    "Test successful"
+}
 pub struct DatabaseClient {
     base_url: String,
     auth_token: String,
