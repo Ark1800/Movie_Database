@@ -1,6 +1,6 @@
 /*
 Made by: Mathew Dusome
-December 17 2025
+Mar 29 2026
 Turso (libSQL) database module for Rust
 
 ================================
@@ -21,7 +21,7 @@ INITIAL SETUP:
    Then add these 2 new sections:
 
    [target.'cfg(target_arch = "wasm32")'.dependencies]
-   wasm-bindgen = "=0.2.106"
+   wasm-bindgen = "0.2"
    wasm-bindgen-futures = "0.4"
    js-sys = "0.3"
    web-sys = { version = "0.3", features = [
@@ -72,26 +72,68 @@ CUSTOMIZE YOUR DATABASE SCHEMA:
 ================================
 USAGE EXAMPLES:
 ================================
+// NOTE: The table used in these examples is called 'messages'.
     let client = create_database_client();
-    
-    // Create table
-    create_table_from_struct("my_table").await?;
-    
-    // Fetch all records
-    let records: Vec<DatabaseTable> = client.fetch_table("my_table").await?;
-    
-    // Insert a record (set id to 0 - auto-generated)
-    let new_record = DatabaseTable { id: 0, text: "Hello".to_string() };
-    let id = client.insert_record("my_table", &new_record).await?;
-    
-    // Update a record
-    let count = client.update_record_by_id("my_table", 1, "text", "Updated").await?;
-    
-    // Delete a record
-    let count = client.delete_record_by_id("my_table", 1).await?;
-    
+
+    // Create table (call once at startup)
+    if let Ok(_) = create_table_from_struct("messages").await {
+        // Table created or already exists
+    } else {
+        // Handle error
+    }
+
+    // Fetch all records (for display)
+    let mut records: Vec<DatabaseTable> = Vec::new();
+    if let Ok(result) = client.fetch_table("messages").await {
+        records = result;
+        // To update a ListView with these records:
+        // update_listview(&mut list_view, &records);
+    } else {
+        // Handle error
+    }
+
+    // Insert a record (from user text input)
+    let new_record = DatabaseTable { id: 0, text: "User entered text".to_string() };
+    if let Ok(id) = client.insert_record("messages", &new_record).await {
+        // Inserted, id contains the new record's id
+    } else {
+        // Handle error
+    }
+
+    // Update a record by id (from user id and new text input)
+    if let Ok(updated_count) = client.update_record_by_id("messages", 5, "text", "New text").await {
+        // updated_count is the number of records updated
+    } else {
+        // Handle error
+    }
+
+    // Delete a record by id (from user id input)
+    if let Ok(deleted_count) = client.delete_record_by_id("messages", 5).await {
+        // deleted_count is the number of records deleted
+    } else {
+        // Handle error
+    }
+
     // Custom SQL queries
-    client.execute_sql("SELECT * FROM my_table WHERE id > 5").await?;
+    if let Ok(_) = client.execute_sql("SELECT * FROM messages WHERE id > 5").await {
+        // Query executed
+    } else {
+        // Handle error
+    }
+
+  // ---
+    // Displaying records in a ListView:
+    //Where 'list_view' is your ListView instance and 'records' is the Vec<DatabaseTable> fetched from the database.
+    //Change the items.push! line to customize how each record is displayed in the list.
+   
+   fn update_listview(list_view: &mut ListView, messages: &Vec<DatabaseTable>) {
+    list_view.clear();
+    let mut items: Vec<String> = Vec::new();
+    for (i, msg) in messages.iter().enumerate() {
+        items.push(format!("  {}: ID={}, Text={}", i + 1, msg.id, msg.text));
+    }
+    list_view.add_items(&items);
+}
 */
 
 use serde::{Deserialize, Serialize};
@@ -102,7 +144,8 @@ fn is_zero(num: &i32) -> bool {
 }
 
 pub const TURSO_URL: &str = "libsql://movie-database-ark1800.aws-us-west-2.turso.io";
-pub const TURSO_AUTH_TOKEN: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQ4MDg5MjAsImlkIjoiMDE5ZDNhZGEtOTUwMS03OGQxLTliNTItNTBlOGFmYjgyZjg2IiwicmlkIjoiOGMyMjFlMzUtMzg1ZS00ZTdhLWIxZDctMjhjMWI2NWU3MmZmIn0.qttbkZwgM31798jGqCc6ehkrS3TcBIKOIELnhxsRZXtMW73INfkeY8HE8qD8PhS9i3UFGjdNgzQ2rcAZrHc9AQ";
+pub const TURSO_AUTH_TOKEN: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQ4Mjk3MjYsImlkIjoiMDE5ZDNhZGEtOTUwMS03OGQxLTliNTItNTBlOGFmYjgyZjg2IiwicmlkIjoiOGMyMjFlMzUtMzg1ZS00ZTdhLWIxZDctMjhjMWI2NWU3MmZmIn0.o29pmPn7uy8WH6vtrWkxbVtAiGoIbxeNw_brEocAu9dm5HGsApi2UINn2OsmuPCcT3PmlK_dAqHhShCttkIDAg";
+
 // ============================================================================
 // CUSTOMIZE THIS STRUCT FOR YOUR DATABASE SCHEMA
 // ============================================================================
@@ -126,7 +169,7 @@ pub struct DatabaseTable {
     #[serde(default, skip_serializing_if = "is_zero")]
     pub id: i32,
     pub title: String,
-    pub actors: String,
+    pub actor: String,
     pub released: String,
     pub summary: String,
     // Example: Add more fields like this:
@@ -180,7 +223,7 @@ pub async fn create_table_from_struct(table_name: &str) -> Result<(), Box<dyn st
         "CREATE TABLE IF NOT EXISTS {} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
-            actors TEXT NOT NULL,
+            actor TEXT NOT NULL,
             released TEXT NOT NULL,
             summary TEXT NOT NULL
         )",
@@ -190,10 +233,6 @@ pub async fn create_table_from_struct(table_name: &str) -> Result<(), Box<dyn st
     Ok(())
 }
 
-pub async fn test(name: &str) -> &str {
-    println!("Hello, {}!", name);
-    "Test successful"
-}
 pub struct DatabaseClient {
     base_url: String,
     auth_token: String,
