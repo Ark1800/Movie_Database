@@ -1,6 +1,6 @@
 /*
 Made by: Mathew Dusome
-Mar 29 2026
+Mar 30 2026
 Turso (libSQL) database module for Rust
 
 ================================
@@ -35,8 +35,11 @@ INITIAL SETUP:
 
    [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
    ureq = { version = "2.9", features = ["json"] }
-
-8. To build for web: Use "Build: Web Output(Advanced)" option in the Dusome's extension.
+8. Add use statement:
+    use crate::modules::database::{create_database_client, create_table_from_struct, DatabaseTable};
+9. Add to mod.rs:
+    pub mod database;
+10. To build for web: Use "Build: Web Output(Advanced)" option in the Dusome's extension.
    This will compile to WebAssembly with the wasm32 dependencies above.
 
 ================================
@@ -50,7 +53,7 @@ CUSTOMIZE YOUR DATABASE SCHEMA:
 
 2. Create your table in Turso (via CLI or SQL):
    
-   Option A - Using Turso CLI:
+   Using Turso CLI:
      turso db shell my-db
      CREATE TABLE my_table (
        id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,9 +62,7 @@ CUSTOMIZE YOUR DATABASE SCHEMA:
        ...
      );
 
-   Option B - Using the Rust API:
-     Update the create_table_from_struct() function below with your schema
-
+ 
 3. Column type mapping:
    - INTEGER → i32, i64
    - TEXT → String
@@ -72,15 +73,10 @@ CUSTOMIZE YOUR DATABASE SCHEMA:
 ================================
 USAGE EXAMPLES:
 ================================
+
 // NOTE: The table used in these examples is called 'messages'.
     let client = create_database_client();
 
-    // Create table (call once at startup)
-    if let Ok(_) = create_table_from_struct("messages").await {
-        // Table created or already exists
-    } else {
-        // Handle error
-    }
 
     // Fetch all records (for display)
     let mut records: Vec<DatabaseTable> = Vec::new();
@@ -100,8 +96,16 @@ USAGE EXAMPLES:
         // Handle error
     }
 
-    // Update a record by id (from user id and new text input)
+    // Update a record by id (Can only do one column at a time with this method)
     if let Ok(updated_count) = client.update_record_by_id("messages", 5, "text", "New text").await {
+        // updated_count is the number of records updated
+    } else {
+        // Handle error
+    }
+
+    // Update a record by struct (update all non-id fields)
+    let updated_record = DatabaseTable { id: 5, text: "Updated text".to_string() };
+    if let Ok(updated_count) = client.update_record_by_struct("messages", &updated_record).await {
         // updated_count is the number of records updated
     } else {
         // Handle error
@@ -143,8 +147,8 @@ fn is_zero(num: &i32) -> bool {
     *num == 0
 }
 
-pub const TURSO_URL: &str = "libsql://movie-database-ark1800.aws-us-west-2.turso.io";
-pub const TURSO_AUTH_TOKEN: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQ4Mjk3MjYsImlkIjoiMDE5ZDNhZGEtOTUwMS03OGQxLTliNTItNTBlOGFmYjgyZjg2IiwicmlkIjoiOGMyMjFlMzUtMzg1ZS00ZTdhLWIxZDctMjhjMWI2NWU3MmZmIn0.o29pmPn7uy8WH6vtrWkxbVtAiGoIbxeNw_brEocAu9dm5HGsApi2UINn2OsmuPCcT3PmlK_dAqHhShCttkIDAg";
+pub const TURSO_URL: &str = "https://movie-database-ark1800.aws-us-west-2.turso.io";
+pub const TURSO_AUTH_TOKEN: &str = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQ5NTY5MzQsImlkIjoiMDE5ZDNhZGEtOTUwMS03OGQxLTliNTItNTBlOGFmYjgyZjg2IiwicmlkIjoiOGMyMjFlMzUtMzg1ZS00ZTdhLWIxZDctMjhjMWI2NWU3MmZmIn0.KcX7PLbsrs2Xpv6hCM0IbcyHfCiprnxhEQ0lyfxLAb23kbzQD3XHEA7pVO6vDOHNJ0u_ctaWjimXFxLBfsqoDw";
 
 // ============================================================================
 // CUSTOMIZE THIS STRUCT FOR YOUR DATABASE SCHEMA
@@ -171,12 +175,7 @@ pub struct DatabaseTable {
     pub title: String,
     pub actor: String,
     pub released: String,
-    pub summary: String,
-    // Example: Add more fields like this:
-    // pub email: String,
-    // pub age: i32,
-    // pub active: bool,
-    // pub score: f64,
+    pub summary: String
 }
 
 // ============================================================================
@@ -222,10 +221,7 @@ pub async fn create_table_from_struct(table_name: &str) -> Result<(), Box<dyn st
     let sql = format!(
         "CREATE TABLE IF NOT EXISTS {} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            actor TEXT NOT NULL,
-            released TEXT NOT NULL,
-            summary TEXT NOT NULL
+            text TEXT NOT NULL
         )",
         table_name
     );
@@ -239,6 +235,34 @@ pub struct DatabaseClient {
 }
 
 impl DatabaseClient {
+    /// Update all non-id fields of a DatabaseTable by id
+    #[allow(unused)]
+    pub async fn update_record_by_struct(
+        &self,
+        table: &str,
+        record: &DatabaseTable,
+    ) -> Result<i64, Box<dyn std::error::Error>> {
+        let json = serde_json::to_value(record)?;
+        let obj = json.as_object().ok_or("Record must be an object")?;
+        let mut set_clause = Vec::new();
+        for (k, v) in obj.iter() {
+            if k == "id" {
+                continue;
+            }
+            let value_str = self.value_to_sql(v);
+            set_clause.push(format!("{} = {}", k, value_str));
+        }
+        if set_clause.is_empty() {
+            return Ok(0);
+        }
+        let sql = format!(
+            "UPDATE {} SET {} WHERE id = {}",
+            table,
+            set_clause.join(", "),
+            record.id
+        );
+        self.execute_sql(&sql).await
+    }
     pub fn new(base_url: String, auth_token: String) -> Self {
         Self { base_url, auth_token }
     }
