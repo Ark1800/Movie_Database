@@ -13,17 +13,14 @@ use std::vec;
 
 use crate::modules::database::{DatabaseClient, DatabaseTable, create_database_client};
 use crate::modules::label::Label;
-use crate::modules::listview::ListView;
+use crate::modules::listview::{self, ListView};
 use crate::modules::preload_image::LoadingScreenOptions;
 use crate::modules::preload_image::TextureManager;
 use crate::modules::scale::use_virtual_resolution;
 use crate::modules::still_image::StillImage;
 use crate::modules::text_button::TextButton;
-use crate::modules::text_input;
 use crate::modules::text_input::TextInput;
 use macroquad::prelude::*;
-use macroquad::text;
-use ureq::rustls::client;
 use crate::modules::grid::draw_grid;
 
 /// Set up window settings before the app runs
@@ -44,17 +41,6 @@ fn window_conf() -> Conf {
 async fn main() {
     //DATABASEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
     let mut client = create_database_client();
-    /*
-    // Fetch all records (for display)
-    let mut records: Vec<DatabaseTable> = Vec::new();
-    if let Ok(result) = client.fetch_table("messages").await {
-        records = result;
-        titles.push();
-
-    } else {
-        // Handle error
-    }
-     */
     //LISTVIEWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
     let items: Vec<String> = vec![];
     let mut lst_movies = ListView::new(&items, 555.0, 175.0, 30);
@@ -139,7 +125,7 @@ async fn main() {
     txt_summary.set_multiline(true);
     txt_summary.set_max_chars(175);
     let mut text_inputs = vec![&mut txt_movietitle, &mut txt_mainactors, &mut txt_releasedate, &mut txt_summary, &mut txt_searchname,];
-     client = update_listview(&mut lst_movies, create_database_client()).await;
+    client = update_listview(&mut lst_movies, create_database_client()).await;
     loop {
         use_virtual_resolution(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         //DRAWSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
@@ -152,9 +138,12 @@ async fn main() {
         lst_movies.draw();
         //BUTTON CLEARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
         if btn_clear.click() {
+            lst_movies.select_item(Some(lst_movies.len()));
+
             for input in &mut text_inputs {
                 input.set_text("");
             }
+            lbl_movieid.set_text("Movie ID: ");
         }
         //ADDINGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG
         if btn_add.click() {
@@ -164,7 +153,7 @@ async fn main() {
             let summary = text_inputs[3].get_text();
             let new_record = DatabaseTable { id: 0, title: title, actor: actors, released: release_date, summary: summary};
             if let Ok(id) = client.insert_record("movie_table", &new_record).await {
-               // client = update_listview(&mut lst_movies, client).await;
+                (client, titles) = update_listview(&mut lst_movies, client).await;
             } else {
                 // Handle error
             }
@@ -204,10 +193,8 @@ async fn main() {
     }
 }
 
-//2. then howdo I make thiswork without async?
 
-
-async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> DatabaseClient {
+async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> (DatabaseClient, Vec<String>) {
     list_view.clear();
       
     let mut records: Vec<DatabaseTable> = Vec::new();
@@ -221,7 +208,8 @@ async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> Da
     } else {
        println!("Error fetching records from database {} ",matt.err().unwrap());
     }
+    // Add one selectable blank row after all database rows.
+    titles.push(String::new());
     list_view.add_items(&titles);
-    client
-
+    (client, titles)
 }
