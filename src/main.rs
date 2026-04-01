@@ -13,7 +13,7 @@ use std::vec;
 
 use crate::modules::database::{DatabaseClient, DatabaseTable, create_database_client};
 use crate::modules::label::Label;
-use crate::modules::listview::{self, ListView};
+use crate::modules::listview::ListView;
 use crate::modules::preload_image::LoadingScreenOptions;
 use crate::modules::preload_image::TextureManager;
 use crate::modules::scale::use_virtual_resolution;
@@ -138,12 +138,9 @@ async fn main() {
         lst_movies.draw();
         //BUTTON CLEARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
         if btn_clear.click() {
-            lst_movies.select_item(Some(lst_movies.len()));
-
             for input in &mut text_inputs {
                 input.set_text("");
             }
-            lbl_movieid.set_text("Movie ID: ");
         }
         //ADDINGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG
         if btn_add.click() {
@@ -153,7 +150,7 @@ async fn main() {
             let summary = text_inputs[3].get_text();
             let new_record = DatabaseTable { id: 0, title: title, actor: actors, released: release_date, summary: summary};
             if let Ok(id) = client.insert_record("movie_table", &new_record).await {
-                (client, titles) = update_listview(&mut lst_movies, client).await;
+                client = update_listview(&mut lst_movies, client).await;
             } else {
                 // Handle error
             }
@@ -194,7 +191,7 @@ async fn main() {
 }
 
 
-async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> (DatabaseClient, Vec<String>) {
+async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> DatabaseClient {
     list_view.clear();
       
     let mut records: Vec<DatabaseTable> = Vec::new();
@@ -208,8 +205,7 @@ async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> (D
     } else {
        println!("Error fetching records from database {} ",matt.err().unwrap());
     }
-    // Add one selectable blank row after all database rows.
-    titles.push(String::new());
     list_view.add_items(&titles);
-    (client, titles)
+    client
+
 }
