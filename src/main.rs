@@ -83,7 +83,7 @@ async fn main() {
     .await;
     bg.set_preload(tm.get_preload("assets/movie_db_bg.png").unwrap());
     //LABELSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
-    let mut lbl_title = Label::new("Blackhole: Movie Database", 0.0, 60.0, 60);
+    let mut lbl_title = Label::new("Blackhole: A Movie Database", 0.0, 60.0, 60);
     lbl_title.with_colors(YELLOW, Some(BLACK));
     lbl_title.with_fixed_size(VIRTUAL_WIDTH + 20.0, 100.0);
     lbl_title.with_alignment(modules::label::TextAlign::Center);
