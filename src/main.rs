@@ -4,7 +4,7 @@ Date: 2026-03-25
 Program Details: Displays a Database of movies
 */
 //TO DO
-//1. all db buttons
+//1. search button function 
 //2. instructions/title page
 
 mod modules;
@@ -20,7 +20,8 @@ use crate::modules::scale::use_virtual_resolution;
 use crate::modules::still_image::StillImage;
 use crate::modules::text_button::TextButton;
 use crate::modules::text_input::TextInput;
-use macroquad::prelude::*;
+use macroquad::{prelude::*, text};
+use crate::modules::messagebox::MessageBox;
 use crate::modules::grid::draw_grid;
 
 /// Set up window settings before the app runs
@@ -41,7 +42,11 @@ fn window_conf() -> Conf {
 async fn main() {
     //DATABASEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
     let mut client = create_database_client();
-    //LISTVIEWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+    //MESSAGE BOXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    let mut info_updatebox = MessageBox::info("Updated!", "Movie updated successfully!");
+    let mut info_addbox = MessageBox::info("Added!", "Movie added successfully!");
+    let mut info_removebox = MessageBox::info("Removed!", "Movie removed successfully!");
+    //LISTVIEWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
     let items: Vec<String> = vec![];
     let mut lst_movies = ListView::new(&items, 555.0, 175.0, 30);
     lst_movies.with_colors(YELLOW, Some(BLACK), Some(LIGHTGRAY));
@@ -107,15 +112,18 @@ async fn main() {
     txt_movietitle.with_colors(YELLOW, WHITE, BLACK, RED);
     txt_movietitle.set_prompt("Movie Title");
     txt_movietitle.set_prompt_color(PURPLE);
+    txt_movietitle.set_max_chars(14);
     let mut txt_mainactors = TextInput::new(300.0, 150.0, 200.0, 50.0, 30.0);
     txt_mainactors.with_colors(YELLOW, WHITE, BLACK, RED);
     txt_mainactors.set_prompt("Main Actors");
     txt_mainactors.set_prompt_color(PURPLE);
+    txt_mainactors.set_max_chars(14);
     let mut txt_releasedate = TextInput::new(50.0, 250.0, 200.0, 50.0, 30.0);
     txt_releasedate.with_colors(YELLOW, WHITE, BLACK, RED);
     txt_releasedate.set_prompt("Release Date");
     txt_releasedate.set_prompt_color(PURPLE);
-    let mut lbl_movieid = Label::new("Movie ID: ", 300.0, 250.0, 30);
+    txt_releasedate.set_max_chars(14);
+    let mut lbl_movieid = Label::new("Movie ID: ", 305.0, 280.0, 30);
     lbl_movieid.with_fixed_size(200.0, 50.0);
     lbl_movieid.with_colors(YELLOW, Some(BLACK));
     let mut txt_summary = TextInput::new(50.0, 350.0, 450.0, 200.0, 30.0);
@@ -123,24 +131,20 @@ async fn main() {
     txt_summary.set_prompt("Summary");
     txt_summary.set_prompt_color(PURPLE);
     txt_summary.set_multiline(true);
-    txt_summary.set_max_chars(175);
+    txt_summary.set_max_chars(198);
     let mut text_inputs = vec![&mut txt_movietitle, &mut txt_mainactors, &mut txt_releasedate, &mut txt_summary, &mut txt_searchname,];
     client = update_listview(&mut lst_movies, create_database_client()).await;
     loop {
+        //BG AND VARSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
         use_virtual_resolution(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
-        //DRAWSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
         bg.draw();
-        lbl_title.draw();
-        draw_grid(50.0, BROWN);
-        for input in &mut text_inputs {
-                input.draw();
-        }
-        lst_movies.draw();
         //BUTTON CLEARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
         if btn_clear.click() {
+            client = update_listview(&mut lst_movies, client).await;
             for input in &mut text_inputs {
                 input.set_text("");
             }
+            lbl_movieid.set_text("Movie ID: ");
         }
         //ADDINGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG
         if btn_add.click() {
@@ -151,16 +155,56 @@ async fn main() {
             let new_record = DatabaseTable { id: 0, title: title, actor: actors, released: release_date, summary: summary};
             if let Ok(id) = client.insert_record("movie_table", &new_record).await {
                 client = update_listview(&mut lst_movies, client).await;
+                info_addbox.show();
             } else {
-                // Handle error
+                println!("Error inserting record");
             }
         }
         //REMOVEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEeee
         if btn_remove.click() {
-            println!("Remove Movie button clicked!");
+            let id = lbl_movieid.get_text().split_at(10).1.parse::<i64>().unwrap_or(0);
+            if let Ok(deleted_count) = client.delete_record_by_id("movie_table", id).await {
+                for text_input in &mut text_inputs {
+                    text_input.set_text("");
+                }
+                lbl_movieid.set_text("Movie ID: ");
+                client = update_listview(&mut lst_movies, client).await;
+                info_removebox.show();
+            } else {
+                println!("Error deleting record");
+            }
         }
         if btn_update.click() {
-            println!("Update Movie button clicked!");
+            //only run if fields are full for no error
+            if text_inputs[0].get_text() != "" && text_inputs[1].get_text() != "" && text_inputs[2].get_text() != "" && text_inputs[3].get_text() != "" {
+                let title = text_inputs[0].get_text();
+                let actors = text_inputs[1].get_text();
+                let release_date = text_inputs[2].get_text();
+                let summary = text_inputs[3].get_text();
+                let id = lbl_movieid.get_text().split_at(10).1.parse::<i64>().unwrap_or(0);
+                if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "title", &title).await {
+                // updated_count is the number of records updated
+                } else {
+                    println!("Error updating record");
+                }
+                if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "actor", &actors).await {
+                // updated_count is the number of records updated
+                } else {
+                    println!("Error updating record");
+                }
+                if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "released", &release_date).await {
+                // updated_count is the number of records updated
+                } else {
+                    println!("Error updating record");
+                }
+                if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "summary", &summary).await {
+                // updated_count is the number of records updated
+                } else {
+                    println!("Error updating record");
+                }
+            }
+            client = update_listview(&mut lst_movies, client).await;
+            info_updatebox.show();
         }
         if btn_search.click() {
             println!("Search Movies button clicked!");
@@ -185,7 +229,19 @@ async fn main() {
             } else {
                 println!("Error fetching records from database");
             }
+            client = update_listview(&mut lst_movies, client).await; //remove selection so editing can occur
         }
+        //DRAWSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+        lbl_title.draw();
+        draw_grid(50.0, BROWN);
+        lbl_movieid.draw();
+        for input in &mut text_inputs {
+                input.draw();
+        }
+        lst_movies.draw();
+        info_updatebox.draw();
+        info_addbox.draw();
+        info_removebox.draw();
         next_frame().await;
     }
 }
@@ -193,7 +249,6 @@ async fn main() {
 
 async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> DatabaseClient {
     list_view.clear();
-      
     let mut records: Vec<DatabaseTable> = Vec::new();
     let mut titles: Vec<String> = Vec::new();
     let matt = client.fetch_table("movie_table").await;
@@ -207,5 +262,4 @@ async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> Da
     }
     list_view.add_items(&titles);
     client
-
 }

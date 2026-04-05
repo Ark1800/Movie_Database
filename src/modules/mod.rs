@@ -22,3 +22,4 @@ pub mod text_input;
 pub mod still_image;
 pub mod preload_image;
 pub mod grid;
+pub mod messagebox;
