@@ -20,7 +20,7 @@ use crate::modules::scale::use_virtual_resolution;
 use crate::modules::still_image::StillImage;
 use crate::modules::text_button::TextButton;
 use crate::modules::text_input::TextInput;
-use macroquad::{prelude::*, text};
+use macroquad::prelude::*;
 use crate::modules::messagebox::MessageBox;
 
 /// Set up window settings before the app runs
@@ -40,6 +40,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     //DATABASEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+    #[allow(unused)]
     let mut client = create_database_client();
     //MESSAGE BOXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     let mut info_instructionsbox = MessageBox::info("Instructions", "Welcome!, To add a movie, fill in fields then click 'Add'. To update a movie, select it, edit fields and click 'Update'. To remove a movie, select it and click 'Remove'. Use the search box to find movies by title. Click 'Clear' to reset the input fields. Enjoy!");
@@ -165,6 +166,7 @@ async fn main() {
             let release_date = text_inputs[2].get_text();
             let summary = text_inputs[3].get_text();
             let new_record = DatabaseTable { id: 0, title: title, actor: actors, released: release_date, summary: summary};
+            #[allow(unused)]
             if let Ok(id) = client.insert_record("movie_table", &new_record).await {
                 client = update_listview(&mut lst_movies, client).await;
                 info_addbox.show();
@@ -175,6 +177,7 @@ async fn main() {
         //REMOVEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEeee
         if btn_remove.click() {
             let id = lbl_movieid.get_text().split_at(10).1.parse::<i64>().unwrap_or(0);
+            #[allow(unused)]
             if let Ok(deleted_count) = client.delete_record_by_id("movie_table", id).await {
                 for text_input in &mut text_inputs {
                     text_input.set_text("");
@@ -194,21 +197,25 @@ async fn main() {
                 let release_date = text_inputs[2].get_text();
                 let summary = text_inputs[3].get_text();
                 let id = lbl_movieid.get_text().split_at(10).1.parse::<i64>().unwrap_or(0);
+                #[allow(unused)]
                 if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "title", &title).await {
                 // updated_count is the number of records updated
                 } else {
                     println!("Error updating record");
                 }
+                #[allow(unused)]
                 if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "actor", &actors).await {
                 // updated_count is the number of records updated
                 } else {
                     println!("Error updating record");
                 }
+                #[allow(unused)]
                 if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "released", &release_date).await {
                 // updated_count is the number of records updated
                 } else {
                     println!("Error updating record");
                 }
+                #[allow(unused)]
                 if let Ok(updated_count) = client.update_record_by_id("movie_table", id, "summary", &summary).await {
                 // updated_count is the number of records updated
                 } else {
@@ -252,6 +259,7 @@ async fn main() {
         }
         //LISTVIEW SELECTEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
         if lst_movies.selected_item().is_some() && text_inputs[0].get_text() != *lst_movies.selected_item().unwrap() {
+            #[allow(unused)]
             let mut records: Vec<DatabaseTable> = Vec::new();
             if let Ok(result) = client.fetch_table("movie_table").await {
                 records = result;
@@ -294,6 +302,7 @@ async fn main() {
 
 async fn update_listview(list_view: &mut ListView, client: DatabaseClient) -> DatabaseClient {
     list_view.clear();
+    #[allow(unused)]
     let mut records: Vec<DatabaseTable> = Vec::new();
     let mut titles: Vec<String> = Vec::new();
     let matt = client.fetch_table("movie_table").await;

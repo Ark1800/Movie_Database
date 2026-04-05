@@ -253,6 +253,7 @@ impl MessageBox {
     }
     
     //ANDREWS FUNCTIONSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+    #[allow(unused)]
     pub fn set_title(&mut self, title: impl Into<String>) -> &mut Self {
         self.title = title.into(); //.into converts &str to String
         self
