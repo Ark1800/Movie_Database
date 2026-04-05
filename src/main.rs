@@ -22,7 +22,6 @@ use crate::modules::text_button::TextButton;
 use crate::modules::text_input::TextInput;
 use macroquad::{prelude::*, text};
 use crate::modules::messagebox::MessageBox;
-use crate::modules::grid::draw_grid;
 
 /// Set up window settings before the app runs
 fn window_conf() -> Conf {
@@ -43,9 +42,12 @@ async fn main() {
     //DATABASEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
     let mut client = create_database_client();
     //MESSAGE BOXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    let mut info_instructionsbox = MessageBox::info("Instructions", "Welcome!, To add a movie, fill in fields then click 'Add'. To update a movie, select it, edit fields and click 'Update'. To remove a movie, select it and click 'Remove'. Use the search box to find movies by title. Click 'Clear' to reset the input fields. Enjoy!");
     let mut info_updatebox = MessageBox::info("Updated!", "Movie updated successfully!");
     let mut info_addbox = MessageBox::info("Added!", "Movie added successfully!");
     let mut info_removebox = MessageBox::info("Removed!", "Movie removed successfully!");
+    let mut search_message = String::from("No matching movie found."); //for changing message box in search box
+    let mut info_searchbox = MessageBox::info("Search Result", &search_message);
     //LISTVIEWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
     let items: Vec<String> = vec![];
     let mut lst_movies = ListView::new(&items, 555.0, 175.0, 30);
@@ -84,6 +86,9 @@ async fn main() {
     lbl_title.with_colors(YELLOW, Some(BLACK));
     lbl_title.with_fixed_size(VIRTUAL_WIDTH + 20.0, 100.0);
     lbl_title.with_alignment(modules::label::TextAlign::Center);
+    let mut lbl_instructions = Label::new("Click I for instructions again!", 300.0, 120.0, 30);
+    lbl_instructions.with_colors(RED, Some(BLACK));
+    lbl_instructions.with_alignment(modules::label::TextAlign::Center);
     //BUTTONSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
     let mut btn_clear = TextButton::new(200.0, 550.0, 150.0, 50.0, "Clear", BLACK, RED, 30);
     btn_clear.with_text_color(YELLOW);
@@ -134,7 +139,14 @@ async fn main() {
     txt_summary.set_max_chars(198);
     let mut text_inputs = vec![&mut txt_movietitle, &mut txt_mainactors, &mut txt_releasedate, &mut txt_summary, &mut txt_searchname,];
     client = update_listview(&mut lst_movies, create_database_client()).await;
+    info_instructionsbox.show();
     loop {
+        if !info_searchbox.is_visible() {
+            info_searchbox.set_message("No matching movie found.");
+        }
+        if is_key_pressed(KeyCode::I) {
+            info_instructionsbox.show();
+        }
         //BG AND VARSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
         use_virtual_resolution(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         bg.draw();
@@ -202,12 +214,38 @@ async fn main() {
                 } else {
                     println!("Error updating record");
                 }
+                info_updatebox.show();
+                client = update_listview(&mut lst_movies, client).await;
             }
-            client = update_listview(&mut lst_movies, client).await;
-            info_updatebox.show();
         }
         if btn_search.click() {
-            println!("Search Movies button clicked!");
+            text_inputs[0].set_text("");
+            text_inputs[1].set_text("");
+            text_inputs[2].set_text("");
+            text_inputs[3].set_text("");
+            lbl_movieid.set_text("Movie ID: ");
+            if text_inputs[4].get_text() != "" {
+                let search_title = text_inputs[4].get_text();
+                if let Ok(records) = client.fetch_table("movie_table").await {
+                    for record in &records {
+                        if record.title.to_lowercase().contains(&search_title.to_lowercase()) {
+                            search_message = format!("Found '{}' in the database.", record.title);
+                            info_searchbox.set_message(search_message);
+                            text_inputs[0].set_text(&record.title);
+                            text_inputs[1].set_text(&record.actor);
+                            text_inputs[2].set_text(&record.released);
+                            text_inputs[3].set_text(&record.summary);
+                            lbl_movieid.set_text(&format!("Movie ID: {}", record.id));
+                            break; // Stop after finding the first match
+                        }
+                    }
+                } else {
+                    println!("Error fetching records from database");
+                }
+                info_searchbox.show();
+            } else {
+                info_searchbox.set_message("No matching movie found.");
+            }
         }
         if btn_exit.click() {
             break;
@@ -233,15 +271,22 @@ async fn main() {
         }
         //DRAWSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
         lbl_title.draw();
-        draw_grid(50.0, BROWN);
         lbl_movieid.draw();
+        lbl_instructions.draw();
         for input in &mut text_inputs {
                 input.draw();
         }
         lst_movies.draw();
+        info_instructionsbox.draw();
+        info_instructionsbox.centered();
         info_updatebox.draw();
+        info_updatebox.centered();
         info_addbox.draw();
+        info_addbox.centered();
+        info_searchbox.draw();
+        info_searchbox.centered();
         info_removebox.draw();
+        info_removebox.centered();
         next_frame().await;
     }
 }
