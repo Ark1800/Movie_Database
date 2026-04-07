@@ -87,7 +87,7 @@ async fn main() {
     lbl_title.with_colors(YELLOW, Some(BLACK));
     lbl_title.with_fixed_size(VIRTUAL_WIDTH + 20.0, 100.0);
     lbl_title.with_alignment(modules::label::TextAlign::Center);
-    let mut lbl_instructions = Label::new("Click I for instructions again!", 300.0, 120.0, 30);
+    let mut lbl_instructions = Label::new("Click '/' for instructions again!", 300.0, 120.0, 30);
     lbl_instructions.with_colors(RED, Some(BLACK));
     lbl_instructions.with_alignment(modules::label::TextAlign::Center);
     //BUTTONSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
@@ -145,7 +145,7 @@ async fn main() {
         if !info_searchbox.is_visible() {
             info_searchbox.set_message("No matching movie found.");
         }
-        if is_key_pressed(KeyCode::I) {
+        if is_key_pressed(KeyCode::Slash) {
             info_instructionsbox.show();
         }
         //BG AND VARSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
