@@ -3,9 +3,6 @@ By: Andrew Campbell
 Date: 2026-03-25
 Program Details: Displays a Database of movies
 */
-//TO DO
-//1. search button function 
-//2. instructions/title page
 
 mod modules;
 
